@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agenda Citas</title>
+
+  <!-- Incluir la librería de jQuery para manipulación de DOM -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- Incluir la librería de jQuery UI para el selector de fechas -->
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Cursive', Arial, sans-serif;
+      background-color: #f8f0f7;
+      color: #4A4A4A;
+      padding: 20px;
+      text-align: center;
+      background-image: url('https://www.transparenttextures.com/patterns/soft-wallpaper.png');
+    }
+
+    #agenda-container {
+      width: 80%;
+      margin: auto;
+      padding: 30px;
+      border: 2px solid #ff8c8c;
+      background-color: #fff0f6;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      background-image: url('https://www.transparenttextures.com/patterns/diagonal-stripes-light.png');
+      background-repeat: repeat;
+    }
+
+    h2 {
+      color: #ff4b5c;
+      font-size: 2.5em;
+      font-family: 'Cursive';
+      margin-bottom: 10px;
+    }
+
+    label {
+      font-size: 1.2em;
+      color: #ff4b5c;
+    }
+
+    #calendar {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    #note {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      border: 1px solid #ff4b5c;
+      border-radius: 8px;
+      font-size: 16px;
+      height: 120px;
+      background-color: #ffe6f2;
+    }
+
+    #save-button, #delete-button {
+      margin-top: 15px;
+      padding: 12px 18px;
+      background-color: #ff4b5c;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    #save-button:hover, #delete-button:hover {
+      background-color: #e04354;
+    }
+
+    .note-entry {
+      margin-bottom: 18px;
+      background-color: #ffe6f2;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #ff8c8c;
+    }
+
+    .note-entry h4 {
+      margin: 0;
+      font-size: 1.1em;
+      color: #ff4b5c;
+    }
+
+    .note-entry p {
+      font-size: 1em;
+      color: #4A4A4A;
+    }
+
+    .heart-icon {
+      color: #ff4b5c;
+      font-size: 20px;
+    }
+
+    /* Estilo para los días con notas */
+    .ui-datepicker .highlight-day a {
+      background-color: #ff4b5c !important;
+      color: white;
+      border-radius: 50%;
+    }
+
+    /* Agregar más corazones y detalles */
+    .heart-icon-small {
+      font-size: 16px;
+      color: #ff4b5c;
+    }
+
+    .extra-heart {
+      font-size: 28px;
+      color: #ff4b5c;
+      margin-left: 10px;
+    }
+
+    .extra-heart-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 15px;
+    }
+
+  </style>
+</head>
+<body>
+
+<div id="agenda-container">
+  <h2>Agenda Citas <span class="heart-icon">❤️</span></h2>
+  
+  <!-- Selector de fecha -->
+  <label for="calendar">Selecciona una fecha:</label>
+  <input type="text" id="calendar" readonly>
+  
+  <!-- Área para agregar la nota -->
+  <label for="note">Requisitos o exigencias para poder asistir a la cita:</label>
+  <textarea id="note" placeholder="Escribe tus notas aquí..."></textarea>
+  
+  <!-- Botones para guardar y borrar notas -->
+  <button id="save-button">Guardar Nota</button>
+  <button id="delete-button">Eliminar Notas</button>
+
+  <h3>Notas Guardadas</h3>
+  <div id="saved-notes"></div>
+  
+  <!-- Corazones adicionales -->
+  <div class="extra-heart-container">
+    <span class="extra-heart">💖</span>
+    <span class="extra-heart">💗</span>
+    <span class="extra-heart">💓</span>
+  </div>
+</div>
+
+<script>
+  $(document).ready(function() {
+    // Iniciar el calendario
+    $("#calendar").datepicker({
+      dateFormat: 'yy-mm-dd',
+      onSelect: function(dateText) {
+        loadNotes(dateText); // Cargar notas guardadas para la fecha seleccionada
+        highlightDaysWithNotes(); // Resaltar días con notas
+      }
+    });
+
+    // Función para guardar la nota
+    $("#save-button").click(function() {
+      var selectedDate = $("#calendar").val();
+      var noteContent = $("#note").val();
+
+      if (selectedDate && noteContent) {
+        var notes = JSON.parse(localStorage.getItem('agendaNotes')) || {};
+
+        if (!notes[selectedDate]) {
+          notes[selectedDate] = [];
+        }
+
+        notes[selectedDate].push(noteContent);
+        localStorage.setItem('agendaNotes', JSON.stringify(notes));
+
+        // Limpiar el área de texto
+        $("#note").val('');
+        loadNotes(selectedDate); // Recargar las notas de la fecha seleccionada
+        highlightDaysWithNotes(); // Resaltar los días con notas
+      } else {
+        alert("Por favor, selecciona una fecha y agrega una nota.");
+      }
+    });
+
+    // Función para eliminar todas las notas de la fecha seleccionada
+    $("#delete-button").click(function() {
+      var selectedDate = $("#calendar").val();
+      if (selectedDate) {
+        var notes = JSON.parse(localStorage.getItem('agendaNotes')) || {};
+
+        // Eliminar notas para la fecha seleccionada
+        delete notes[selectedDate];
+        localStorage.setItem('agendaNotes', JSON.stringify(notes));
+
+        loadNotes(selectedDate); // Recargar las notas después de eliminar
+        highlightDaysWithNotes(); // Actualizar los días resaltados
+      } else {
+        alert("Por favor, selecciona una fecha para eliminar las notas.");
+      }
+    });
+
+    // Función para cargar las notas de la fecha seleccionada
+    function loadNotes(date) {
+      var notes = JSON.parse(localStorage.getItem('agendaNotes')) || {};
+      var notesContainer = $("#saved-notes");
+      notesContainer.empty(); // Limpiar las notas anteriores
+
+      if (notes[date]) {
+        notes[date].forEach(function(note, index) {
+          var noteEntry = $("<div class='note-entry'></div>");
+          noteEntry.append("<h4>Nota " + (index + 1) + "</h4>");
+          noteEntry.append("<p>" + note + "</p>");
+          notesContainer.append(noteEntry);
+        });
+      } else {
+        notesContainer.append("<p>No hay notas para esta fecha.</p>");
+      }
+    }
+
+    // Función para resaltar los días con notas
+    function highlightDaysWithNotes() {
+      var notes = JSON.parse(localStorage.getItem('agendaNotes')) || {};
+      
+      $("#calendar").datepicker("refresh");
+      $("#calendar").datepicker("option", "beforeShowDay", function(date) {
+        var dateStr = $.datepicker.formatDate('yy-mm-dd', date);
+        if (notes[dateStr]) {
+          return [true, "highlight-day", "Día con nota"];
+        } else {
+          return [true, "", ""];
+        }
+      });
+    }
+
+    // Inicializar la función para resaltar los días con notas al cargar la página
+    highlightDaysWithNotes();
+  });
+</script>
+
+</body>
+</html>
+
